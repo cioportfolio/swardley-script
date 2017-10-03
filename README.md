@@ -7,4 +7,4 @@ Converts a simple map recorded as a JSON object into a conventional visual form 
 $ node map.js > map.html
 ```
 
-[Example html map](map.html) generated from the included map.js
+[Example html map](https://cioportfolio.github.io/swardley-script/) generated from the included map.js
