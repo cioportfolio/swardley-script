@@ -113,7 +113,7 @@ var mapScript = {
 		},		
 		{
 			start: "8",
-			end: "Power"
+			end: "10"
 		},		
 		{
 			start: "9",
