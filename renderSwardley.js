@@ -81,7 +81,7 @@ var renderElements = function(mapScript, mapWidth, mapHeight){
 
 var renderMap = function(mapScript, mapWidth, mapHeight) {
 
-	var mapSvg = 
+	var mapSvg =
       	'<g id="map">' +
 	      '<g id="links">' +
 	      	renderLinks(mapScript, mapWidth, mapHeight) +
@@ -103,7 +103,7 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
 	var prodMark = mapWidth/2;
 	var commMark = mapWidth/4*3;
 	var visMark = mapHeight/2;
-	var svgHeader = 
+	var svgHeader =
 		'<svg width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
 			'<g id="grid">' +
 				'<g id="value chain" transform="translate(0,'+mapHeight+') rotate(270)">' +
@@ -157,6 +157,10 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
 	return svgHeader + renderMap(mapScript, mapWidth, mapHeight) + svgFooter;
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined'){
-	module.exports = renderSvg;
+function draw() {
+	var svg = renderSvg(mapScript, mapWidth, mapHeight);
+	var newSvg = document.getElementById('wardley-map');
+	newSvg.outerHTML += svg;
 }
+
+window.onload = draw;
