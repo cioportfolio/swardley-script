@@ -60,13 +60,34 @@ var renderLinks = function(mapScript, mapWidth, mapHeight) {
 var renderElement = function(element, mapWidth, mapHeight) {
 	var x = matToX(element.maturity, mapWidth);
 	var y = visToY(element.visibility, mapHeight);
+        var textAnchor = 'start';
+        var textX = '10';
+        var textY = '-5';
+        var circleSvg = '<circle cx="0" cy="0" r="5" stroke="black" fill="white" />';
 
+        if ('anchor' in element){
+            if (element.anchor == 'end') {
+                textAnchor = 'end';
+                textX = '-10';
+                textY = '-5';
+            }
+            if (element.anchor == 'middle') {
+                textAnchor = 'middle';
+                textX = '0';
+                textY = '0';
+            }
+        }
+        if ('customer' in element) {
+            if (element.customer === true) {
+                circleSvg = '';
+            }
+        }
 	var elementSvg =
 		'<g id="'+element.name+'" transform="translate('+x+','+y+')">' +
-          '<circle cx="0" cy="0" r="5" stroke="black" fill="white" />' +
-          '<text x="10" y="-5" text-anchor="start">' +
+          '<text x="' + textX + '" y="' + textY + '" text-anchor="' + textAnchor + '">' +
           	element.name +
           '</text>  ' +
+          circleSvg +
         '</g>';
 
     return elementSvg;
@@ -81,7 +102,7 @@ var renderElements = function(mapScript, mapWidth, mapHeight){
 
 var renderMap = function(mapScript, mapWidth, mapHeight) {
 
-	var mapSvg = 
+	var mapSvg =
       	'<g id="map">' +
 	      '<g id="links">' +
 	      	renderLinks(mapScript, mapWidth, mapHeight) +
@@ -103,7 +124,7 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
 	var prodMark = mapWidth/2;
 	var commMark = mapWidth/4*3;
 	var visMark = mapHeight/2;
-	var svgHeader = 
+	var svgHeader =
 		'<svg width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
 			'<g id="grid">' +
 				'<g id="value chain" transform="translate(0,'+mapHeight+') rotate(270)">' +
