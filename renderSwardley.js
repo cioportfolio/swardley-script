@@ -23,43 +23,43 @@ var mapScript = {
 	]
 }; */
 
-var padding = 20;
-
-var visToY = function (visibility, mapHeight) {
+var renderSwardley = {
+    visToY: function (visibility, mapHeight) {
 	return (1-visibility)*mapHeight;
-};
+    },
 
-var matToX = function (maturity, mapWidth) {
+    matToX: function (maturity, mapWidth) {
 	return maturity*mapWidth;
-};
+    },
 
-var renderLink = function(startElement, endElement, mapWidth, mapHeight) {
-	var x1 = matToX(startElement.maturity, mapWidth);
-	var x2 = matToX(endElement.maturity, mapWidth);
-	var y1 = visToY(startElement.visibility, mapHeight);
-	var y2 = visToY(endElement.visibility, mapHeight);
+    renderLink: function(startElement, endElement, mapWidth, mapHeight) {
+	var x1 = this.matToX(startElement.maturity, mapWidth);
+	var x2 = this.matToX(endElement.maturity, mapWidth);
+	var y1 = this.visToY(startElement.visibility, mapHeight);
+	var y2 = this.visToY(endElement.visibility, mapHeight);
 
-	return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="grey" />';
+	return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" myns:startId="'+ startElement.id + '" myns:endId="' + endElement.id + '" stroke="grey" />';
 
-};
+    },
 
-var getElementById = function(elements, id) {
+    getElementById: function(elements, id) {
 	var hasId = function(element) {
-		return element.id === id;
+	    return element.id === id;
 	};
 	return elements.find(hasId);
-};
+    },
 
-var renderLinks = function(mapScript, mapWidth, mapHeight) {
+    renderLinks: function(mapScript, mapWidth, mapHeight) {
+        var that = this;
 	var mapLink = function(link) {
-		return renderLink(getElementById(mapScript.elements,link.start), getElementById(mapScript.elements,link.end), mapWidth, mapHeight);
+	    return that.renderLink(that.getElementById(mapScript.elements,link.start), that.getElementById(mapScript.elements,link.end), mapWidth, mapHeight);
 	};
 	return mapScript.links.map(mapLink).join('');
-};
+    },
 
-var renderElement = function(element, mapWidth, mapHeight) {
-	var x = matToX(element.maturity, mapWidth);
-	var y = visToY(element.visibility, mapHeight);
+    renderElement: function(element, mapWidth, mapHeight) {
+	var x = this.matToX(element.maturity, mapWidth);
+	var y = this.visToY(element.visibility, mapHeight);
         var textAnchor = 'start';
         var textX = '10';
         var textY = '-5';
@@ -82,50 +82,144 @@ var renderElement = function(element, mapWidth, mapHeight) {
                 circleSvg = '';
             }
         }
-	var elementSvg =
-		'<g id="'+element.name+'" transform="translate('+x+','+y+')">' +
-          '<text x="' + textX + '" y="' + textY + '" text-anchor="' + textAnchor + '">' +
-          	element.name +
-          '</text>  ' +
-          circleSvg +
-        '</g>';
+        var elementSvg =
+	    '<g id="'+element.id+'" transform="translate('+x+','+y+')" class="element">' +
+            '<text x="' + textX + '" y="' + textY + '" text-anchor="' + textAnchor + '">' +
+            element.name +
+            '</text>  ' +
+            circleSvg +
+            '</g>';
 
-    return elementSvg;
-};
+        return elementSvg;
+    },
 
-var renderElements = function(mapScript, mapWidth, mapHeight){
-	var mapElement = function (element) {
-		return renderElement(element, mapWidth, mapHeight);
-	};
-	return mapScript.elements.map(mapElement).join('');
-};
+    renderElements: function(mapScript, mapWidth, mapHeight){
+        var that = this;
+        return mapScript.elements.map(function (element, index) {
+	    return that.renderElement(element, mapWidth, mapHeight);
+        }).join('');
+    },
 
-var renderMap = function(mapScript, mapWidth, mapHeight) {
-
+    renderMap: function(mapScript, mapWidth, mapHeight) {
 	var mapSvg =
-      	'<g id="map">' +
-	      '<g id="links">' +
-	      	renderLinks(mapScript, mapWidth, mapHeight) +
-	      '</g>' +
-	      '<g id="elements">' +
-	      	renderElements(mapScript, mapWidth, mapHeight) +
-	      '</g>' +
-	   	'</g>';
-
+      	    '<g id="map">' +
+    	    '<g id="links">' +
+	    this.renderLinks(mapScript, mapWidth, mapHeight) +
+	    '</g>' +
+	    '<g id="elements">' +
+	    this.renderElements(mapScript, mapWidth, mapHeight) +
+	    '</g>' +
+	    '</g>';
 	return mapSvg;
+    },
+    selectedElement: null,
+
+    endDrag: function(event) {
+        renderSwardley.selectedElement = null;
+    },
+
+    findGParent: function(node) {
+        if(node.nodeName == "svg") {
+            return null;
+        }
+        if(node.nodeName == "g") {
+            return node;
+        }
+        return renderSwardley.findGParent(node.parentNode);
+    },
+
+    findSVGParent: function(node) {
+        if(node.nodeName == "BODY") {
+            return null;
+        }
+        if(node.nodeName == "svg") {
+            return node;
+        }
+        return renderSwardley.findSVGParent(node.parentNode);
+    },
+
+    findLinks: function(svg) {
+        var map = null;
+        for (let child in svg.children) {
+            if(svg.children[child].id == "map") {
+                map = svg.children[child];
+            }
+        }
+        if (map == null) {
+            return null;
+        }
+        var links = null;
+        for (let child in map.children) {
+            if (map.children[child].id == "links") {
+                return map.children[child].children;
+            }
+        }
+        return null;
+    },
+
+    findLinksToNode: function(node) {
+        var svg = renderSwardley.findSVGParent(node);
+        var allLinks = renderSwardley.findLinks(svg);
+        renderSwardley.links = allLinks;
+        var linksToNode = [];
+        for (let link of allLinks) {
+            if(link.attributes['myns:startid'].value == node.id || link.attributes['myns:endid'].value == node.id){
+                linksToNode.push(link);
+            }
+        }
+        return linksToNode;
+    },
+
+    startDrag: function(event) {
+        renderSwardley.selectedElement = renderSwardley.findGParent(event.target);
+        renderSwardley.linksToSelectedElement = renderSwardley.findLinksToNode(renderSwardley.selectedElement);
+        renderSwardley.xOffset = renderSwardley.selectedElement.transform.baseVal[0].matrix.e - event.clientX;
+        renderSwardley.yOffset = renderSwardley.selectedElement.transform.baseVal[0].matrix.f - event.clientY;
+    },
+
+    updateLinksToElement: function(element, links) {
+        for(link of links) {
+            if (link.attributes['myns:startid'].value == element.id) {
+                link.x1.baseVal.value = element.transform.baseVal[0].matrix.e;
+                link.y1.baseVal.value = element.transform.baseVal[0].matrix.f;
+            }
+            else if (link.attributes['myns:endid'].value == element.id) {
+                link.x2.baseVal.value = element.transform.baseVal[0].matrix.e;
+                link.y2.baseVal.value = element.transform.baseVal[0].matrix.f;
+            }
+        }
+    },
+    drag: function(event) {
+        if (renderSwardley.selectedElement != null) {
+            event.preventDefault();
+            renderSwardley.selectedElement.transform.baseVal[0].matrix;
+            renderSwardley.selectedElement.transform.baseVal.getItem(0).setTranslate(event.clientX + renderSwardley.xOffset, event.clientY + renderSwardley.yOffset);
+            renderSwardley.updateLinksToElement(renderSwardley.selectedElement, renderSwardley.linksToSelectedElement);
+        }
+    },
+
+    enableDragging: function(event) {
+        var svg = event.target;
+        svg.addEventListener('mousedown', this.startDrag);
+        svg.addEventListener('mousemove',  this.drag);
+        svg.addEventListener('mouseup', this.endDrag);
+        svg.addEventListener('mouseleave', this.endDrag);
+    }
 };
 
 var renderSvg = function(mapScript, mapWidth, mapHeight) {
-	var svgWidth = mapWidth+2*padding;
-	var svgHeight = mapHeight+4*padding;
-	var vbWidth = mapWidth+padding;
-	var vbHeight = mapHeight+padding;
-	var custMark = mapWidth/4;
-	var prodMark = mapWidth/2;
-	var commMark = mapWidth/4*3;
-	var visMark = mapHeight/2;
-	var svgHeader =
-		'<svg width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
+    renderSwardley.mapScript = mapScript;
+    var padding = 20;
+    var svgWidth = mapWidth+2*padding;
+    var svgHeight = mapHeight+4*padding;
+    var vbWidth = mapWidth+padding;
+    var vbHeight = mapHeight+padding;
+    var custMark = mapWidth/4;
+    var prodMark = mapWidth/2;
+    var commMark = mapWidth/4*3;
+    var visMark = mapHeight/2;
+    var svgHeader =
+		'<svg width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:myns="swardley" onload="renderSwardley.enableDragging(event)">' +
 			'<g id="grid">' +
 				'<g id="value chain" transform="translate(0,'+mapHeight+') rotate(270)">' +
 					'<line x1="0" y1="0" x2="'+mapHeight+'" y2="0" stroke="black"/>' +
@@ -175,8 +269,9 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
 			'</g>' +
 		'</svg> ';
 
-	return svgHeader + renderMap(mapScript, mapWidth, mapHeight) + svgFooter;
+	return svgHeader + renderSwardley.renderMap(mapScript, mapWidth, mapHeight) + svgFooter;
 };
+
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined'){
 	module.exports = renderSvg;
