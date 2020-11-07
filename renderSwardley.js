@@ -24,6 +24,7 @@ var mapScript = {
 }; */
 
 var renderSwardley = {
+    selectedElement: null,
     visToY: function (visibility, mapHeight) {
 	return (1-visibility)*mapHeight;
     },
@@ -31,6 +32,15 @@ var renderSwardley = {
     matToX: function (maturity, mapWidth) {
 	return maturity*mapWidth;
     },
+
+    yToVis: function (y, mapHeight) {
+	return 1-(y/mapHeight);
+    },
+
+    xToMat: function (x, mapWidth) {
+	return x/mapWidth;
+    },
+
 
     renderLink: function(startElement, endElement, mapWidth, mapHeight) {
 	var x1 = this.matToX(startElement.maturity, mapWidth);
@@ -112,11 +122,6 @@ var renderSwardley = {
 	    '</g>';
 	return mapSvg;
     },
-    selectedElement: null,
-
-    endDrag: function(event) {
-        renderSwardley.selectedElement = null;
-    },
 
     findGParent: function(node) {
         if(node.nodeName == "svg") {
@@ -189,26 +194,58 @@ var renderSwardley = {
             }
         }
     },
+
     drag: function(event) {
         if (renderSwardley.selectedElement != null) {
             event.preventDefault();
-            renderSwardley.selectedElement.transform.baseVal[0].matrix;
             renderSwardley.selectedElement.transform.baseVal.getItem(0).setTranslate(event.clientX + renderSwardley.xOffset, event.clientY + renderSwardley.yOffset);
             renderSwardley.updateLinksToElement(renderSwardley.selectedElement, renderSwardley.linksToSelectedElement);
         }
     },
 
+
+
+    endDrag: function(event) {
+        if (renderSwardley.selectedElement != null) {
+            var maturity = renderSwardley.xToMat(renderSwardley.selectedElement.transform.baseVal[0].matrix.e, renderSwardley.mapWidth);
+            var visibility = renderSwardley.yToVis(renderSwardley.selectedElement.transform.baseVal[0].matrix.f, renderSwardley.mapHeight);
+            var element = renderSwardley.getElementById(renderSwardley.mapScript['elements'],  renderSwardley.selectedElement.id);
+            element.maturity = maturity;
+            element.visibility = visibility;
+            document.getElementById('textarea').value = JSON.stringify(renderSwardley.mapScript, undefined, 2);
+            renderSwardley.selectedElement = null;
+        }
+
+    },
+
+
     enableDragging: function(event) {
-        var svg = event.target;
+        renderSwardley.enableDraggingOnSvg(event.target);
+    },
+
+    enableDraggingOnSvg: function(svg) {
         svg.addEventListener('mousedown', this.startDrag);
         svg.addEventListener('mousemove',  this.drag);
         svg.addEventListener('mouseup', this.endDrag);
         svg.addEventListener('mouseleave', this.endDrag);
+    },
+
+    mapButtonClick: function(svgId) {
+        var svg = document.getElementById(svgId);
+        var mapScript = JSON.parse(document.getElementById('textarea').value);
+        svg.parentElement.innerHTML = renderSvg(mapScript, renderSwardley.mapWidth, renderSwardley.mapHeight);
+
+        if('mode' in mapScript && mapScript['mode'] == 'editable'){
+            var newSvg = document.getElementsByTagName('svg')[0];
+            renderSwardley.enableDraggingOnSvg(newSvg);
+        }
     }
 };
 
 var renderSvg = function(mapScript, mapWidth, mapHeight) {
     renderSwardley.mapScript = mapScript;
+    renderSwardley.mapWidth = mapWidth;
+    renderSwardley.mapHeight = mapHeight;
     var padding = 20;
     var svgWidth = mapWidth+2*padding;
     var svgHeight = mapHeight+4*padding;
@@ -218,8 +255,18 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
     var prodMark = mapWidth/2;
     var commMark = mapWidth/4*3;
     var visMark = mapHeight/2;
+    var svgId = Math.random();
+    var mode = 'display';
+    if ('mode' in mapScript) {
+        mode = mapScript['mode'];
+    }
+    var enableDraggingOnLoad = '';
+    if (mode == 'editable') {
+        enableDraggingOnLoad = 'onload="renderSwardley.enableDragging(event)"';
+    }
+
     var svgHeader =
-		'<svg width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:myns="swardley" onload="renderSwardley.enableDragging(event)">' +
+		'<svg id="' + svgId + '" style="float: left; " width="'+svgWidth+'" height="'+svgHeight+'" viewbox="-'+padding+' 0 '+vbWidth+' '+vbHeight+'" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:myns="swardley"' + enableDraggingOnLoad + '>' +
 			'<g id="grid">' +
 				'<g id="value chain" transform="translate(0,'+mapHeight+') rotate(270)">' +
 					'<line x1="0" y1="0" x2="'+mapHeight+'" y2="0" stroke="black"/>' +
@@ -265,11 +312,13 @@ var renderSvg = function(mapScript, mapWidth, mapHeight) {
 				'</g>' +
 			'</g>';
 
-	var svgFooter =
-			'</g>' +
-		'</svg> ';
-
-	return svgHeader + renderSwardley.renderMap(mapScript, mapWidth, mapHeight) + svgFooter;
+    var svgFooter = '</g>' +
+        '</svg> ';
+        var textArea = '';
+        if (mode == 'editable') {
+            textArea = '<textarea id="textarea" style="float: left; height: 350px; width: 425px;">' + JSON.stringify(mapScript, undefined, 2) + '</textarea><button onclick="renderSwardley.mapButtonClick(\'' + svgId  + '\')">Map</button>';
+        }
+	return svgHeader + renderSwardley.renderMap(mapScript, mapWidth, mapHeight) + svgFooter + textArea;
 };
 
 
